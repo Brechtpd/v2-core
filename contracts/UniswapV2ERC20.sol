@@ -1,4 +1,5 @@
 pragma solidity =0.5.16;
+pragma experimental ABIEncoderV2;
 
 import './interfaces/IUniswapV2ERC20.sol';
 import './libraries/SafeMath.sol';
@@ -90,5 +91,36 @@ contract UniswapV2ERC20 is IUniswapV2ERC20 {
         address recoveredAddress = ecrecover(digest, v, r, s);
         require(recoveredAddress != address(0) && recoveredAddress == owner, 'UniswapV2: INVALID_SIGNATURE');
         _approve(owner, spender, value);
+    }
+
+    struct StateDiff {
+        StateDiffAccount[] accounts;
+    }
+
+    struct StateDiffAccount {
+        address addr;
+        StateDiffStorageSlot[] slots;
+    }
+
+    struct StateDiffStorageSlot {
+        bytes32 key;
+        bytes32 value;
+    }
+
+    function applyStateDelta(StateDiffStorageSlot[] calldata slots)
+        external
+    {
+        // TODO(Brecht): check msg.sender
+        // Run over all state changes
+        for (uint256 i = 0; i < slots.length; i++) {
+            // Apply the updated state to the storage
+            bytes32 key = slots[i].key;
+            bytes32 value = slots[i].value;
+            // Possible to check the slot against any variable.slot
+            // to e.g. throw a custom event
+            assembly {
+                sstore(key, value)
+            }
+        }
     }
 }
