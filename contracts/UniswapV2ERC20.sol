@@ -98,8 +98,8 @@ contract UniswapV2ERC20 is IUniswapV2ERC20 {
     }
 
     struct StateDiffAccount {
-        address addr;
-        StateDiffStorageSlot[] slots;
+        StateDiffStorageSlot[] storageSlots;
+        uint balanceChange;
     }
 
     struct StateDiffStorageSlot {
@@ -107,20 +107,26 @@ contract UniswapV2ERC20 is IUniswapV2ERC20 {
         bytes32 value;
     }
 
-    function applyStateDelta(StateDiffStorageSlot[] calldata slots)
+    function applyStateDelta(StateDiffAccount calldata accountChanges)
         external
+        payable
     {
-        // TODO(Brecht): check msg.sender
+        //require(msg.sender == gwyneth, "not from gwyneth contract");
         // Run over all state changes
-        for (uint256 i = 0; i < slots.length; i++) {
+        for (uint256 i = 0; i < accountChanges.storageSlots.length; i++) {
             // Apply the updated state to the storage
-            bytes32 key = slots[i].key;
-            bytes32 value = slots[i].value;
+            bytes32 key = accountChanges.storageSlots[i].key;
+            bytes32 value = accountChanges.storageSlots[i].value;
             // Possible to check the slot against any variable.slot
             // to e.g. throw a custom event
             assembly {
                 sstore(key, value)
             }
+        }
+
+        if (accountChanges.balanceChange > 0) {
+            (bool success, ) = msg.sender.call.value(accountChanges.balanceChange)("");
+            require(success, "Failed to send Ether");
         }
     }
 }
